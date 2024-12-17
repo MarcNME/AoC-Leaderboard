@@ -1,11 +1,11 @@
 import datetime
 import os
-from dotenv import load_dotenv
 
 import discord
+import requests
 from discord.ext import tasks, commands
-
-import helpers
+from dotenv import load_dotenv
+from tabulate import tabulate
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -13,7 +13,7 @@ AOC_SESSION = os.getenv('AOC_COOKIE')
 AOC_USERID = os.getenv('AOC_USERID')
 
 aocLeaderboardURL = f'https://adventofcode.com/2024/leaderboard/private/view/{AOC_USERID}.json'
-channelName = 'Advent of Code'
+channelName = 'advent-of-code'
 
 description = '''An example bot to showcase the discord.ext.commands extension
 module.
@@ -21,7 +21,6 @@ module.
 There are a number of utility commands being showcased here.'''
 
 userId = '3701859'
-helpers.getLeaderboard(f"https://adventofcode.com/2024/leaderboard/private/view/{userId}.json", AOC_SESSION)
 aocChannel: discord.TextChannel = None
 leaderboardMessage: discord.Message = None
 
@@ -32,19 +31,48 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='?', description=description, intents=intents)
 
 
+def get_leaderboard(leaderboard_url: str, session: str):
+    cookies = {'session': session}
+    response = requests.get(leaderboard_url, cookies=cookies)
+
+    if response.ok:
+        members = list(response.json()['members'].values())
+        members = sorted(members, key=lambda x: x['stars'], reverse=True)
+
+        return members
+    else:
+        RuntimeError("Could not get Leaderboard")
+
+
 def print_leaderboard():
-    members = helpers.getLeaderboard(aocLeaderboardURL, AOC_SESSION)
-    message = ""
+    members = get_leaderboard(aocLeaderboardURL, AOC_SESSION)
+    table = []
 
     for member in members:
-        message += f"{member['name']}: {member['stars']}\n"
-    return message
+        row = [member['name'], member['local_score']]
+
+        for i in range(1, 26):
+            if str(i) in member['completion_day_level']:
+                if len(member['completion_day_level'][str(i)]) == 2:
+                    row.append("🌕")
+                elif len(member['completion_day_level'][str(i)]) == 1:
+                    row.append("🌗")
+                else:
+                    row.append("?")
+            else:
+                row.append("🌑")
+
+        table.append(row)
+    return tabulate(table, tablefmt="plain")
 
 
 def get_aoc_channel(category: discord.CategoryChannel):
+    print("Channel names:")
     for channel in category.channels:
+        print(channel.name)
         if channel.name == channelName:
             return channel
+    print()
     return None
 
 
@@ -63,7 +91,7 @@ async def update_leaderboard_timed():
 @bot.command("updateLeaderboard")
 async def update_leaderboard(ctx):
     if leaderboardMessage is not None:
-        message = f"{print_leaderboard()}\nLast updated: {datetime.datetime.now().strftime("%d.%m.%Y %H:%M")}"
+        message = f"```{print_leaderboard()}```\nLast updated: {datetime.datetime.now().strftime("%d.%m.%Y %H:%M")}"
         print(message)
         await leaderboardMessage.edit(content=message)
         print("Updated Leaderboard\n")
@@ -85,4 +113,5 @@ async def add_leaderboard(ctx: discord.Message):
     update_leaderboard_timed.start()
 
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    bot.run(TOKEN)
