@@ -12,7 +12,7 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 AOC_SESSION = os.getenv('AOC_COOKIE')
 AOC_USERID = os.getenv('AOC_USERID')
 
-aocLeaderboardURL = f'https://adventofcode.com/2024/leaderboard/private/view/{AOC_USERID}.json'
+aocLeaderboardURL = f'https://adventofcode.com/2025/leaderboard/private/view/{AOC_USERID}.json'
 channelName = 'advent-of-code'
 
 description = '''An example bot to showcase the discord.ext.commands extension
@@ -20,7 +20,6 @@ module.
 
 There are a number of utility commands being showcased here.'''
 
-userId = '3701859'
 aocChannel: discord.TextChannel = None
 leaderboardMessage: discord.Message = None
 
@@ -41,7 +40,7 @@ def get_leaderboard(leaderboard_url: str, session: str):
 
         return members
     else:
-        RuntimeError("Could not get Leaderboard")
+        raise RuntimeError("Could not get Leaderboard")
 
 
 def print_leaderboard():
@@ -99,16 +98,15 @@ async def update_leaderboard(ctx):
 
 @bot.command("addLeaderboard")
 async def add_leaderboard(ctx: discord.Message):
+    global aocChannel
+    global leaderboardMessage
     print('Create Channel')
     category = ctx.guild.categories[0]
-    global aocChannel
     aocChannel = get_aoc_channel(category)
-
     if aocChannel is None:
         aocChannel = await ctx.guild.create_text_channel(channelName, category=category)
 
     message = print_leaderboard()
-    global leaderboardMessage
     leaderboardMessage = await aocChannel.send(message)
     update_leaderboard_timed.start()
 
