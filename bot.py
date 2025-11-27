@@ -40,6 +40,7 @@ def get_leaderboard(leaderboard_url: str, session: str):
 
         return members
     else:
+        print(f"Could not get leaderboard. Status: {response.status_code}\n{response.text}")
         raise RuntimeError("Could not get Leaderboard")
 
 
@@ -50,7 +51,7 @@ def print_leaderboard():
     for member in members:
         row = [member['name'], member['local_score']]
 
-        for i in range(1, 26):
+        for i in range(1, 13):
             if str(i) in member['completion_day_level']:
                 if len(member['completion_day_level'][str(i)]) == 2:
                     row.append("🌕")
@@ -71,7 +72,7 @@ def get_aoc_channel(category: discord.CategoryChannel):
         print(channel.name)
         if channel.name == channelName:
             return channel
-    print()
+
     return None
 
 
@@ -81,7 +82,7 @@ async def on_ready():
     print('------')
 
 
-@tasks.loop(minutes=5.0)
+@tasks.loop(minutes=30.0)
 async def update_leaderboard_timed():
     print('Running update')
     await update_leaderboard(None)
