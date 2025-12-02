@@ -9,10 +9,8 @@ from tabulate import tabulate
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-AOC_SESSION = os.getenv('AOC_COOKIE')
-AOC_USERID = os.getenv('AOC_USERID')
 
-aocLeaderboardURL = f'https://adventofcode.com/2025/leaderboard/private/view/{AOC_USERID}.json'
+aoc_leaderboard_url = ""
 channelName = 'advent-of-code'
 
 description = '''An example bot to showcase the discord.ext.commands extension
@@ -30,9 +28,9 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='?', description=description, intents=intents)
 
 
-def get_leaderboard(leaderboard_url: str, session: str):
-    cookies = {'session': session}
-    response = requests.get(leaderboard_url, cookies=cookies)
+def get_leaderboard():
+    headers = {'User-Agent': 'AoC-Leaderboard - github.com/MarcNME/AoC-Leaderboard'}
+    response = requests.get(aoc_leaderboard_url, headers=headers)
 
     if response.ok:
         members = list(response.json()['members'].values())
@@ -45,7 +43,7 @@ def get_leaderboard(leaderboard_url: str, session: str):
 
 
 def print_leaderboard():
-    members = get_leaderboard(aocLeaderboardURL, AOC_SESSION)
+    members = get_leaderboard()
     table = []
 
     for member in members:
@@ -106,6 +104,13 @@ async def add_leaderboard(ctx: discord.Message):
     aocChannel = get_aoc_channel(category)
     if aocChannel is None:
         aocChannel = await ctx.guild.create_text_channel(channelName, category=category)
+
+    message = ctx.message.content.split(" ")
+    if len(message) < 2:
+        await ctx.channel.send("Please provide the AoC leaderboard URL.")
+        return
+    global aoc_leaderboard_url
+    aoc_leaderboard_url = message[1]
 
     message = print_leaderboard()
     leaderboardMessage = await aocChannel.send(message)
